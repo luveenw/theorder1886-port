@@ -266,7 +266,7 @@ APP_DEFAULTS = {'ui_language': 'en', 'game_dir': os.environ.get('THEORDER_GAME_D
                 'video_backend': 'auto', 'gamemode': False, 'mangohud': False, 'desktop_integration': True, 'user_dir': '',
                 'mods_dir': '', 'mods_enabled': True, 'patches_dir': '', 'language': '1',
                 'player_name': '', 'hdr': False, 'draw_pipe': '', 'readbacks': '', 'no_msaa': '', 'stream_memory': 'cached',
-                'gpu_id': '', 'background_warmup': True, 'parallel_warmup': True, 'pipeline_binary_cache': True,
+                'gpu_id': '', 'background_warmup': True, 'parallel_warmup': True, 'pipeline_binary_cache': WINDOWS,
                 'perf_diag': False, 'frame_capture_key': False, 'frame_stats': False, 'gpu_profile': False,
                 'vk_validation': False, 'close_on_play': False,
                 'check_updates': False, 'game_patches': {}, 'controls': {}, 'pad_style': 'playstation'}
@@ -676,9 +676,7 @@ def game_environment(s):
     env = dict(os.environ)
     env['THEORDER_GAME_DIR'] = s['game_dir']
     env.pop('THEORDER_PATCH_DIR', None)
-    # Temporal upscaling is parked (build_graphics): a switch saved on by 2.1.8 has no control left to
-    # turn it off, so it is ignored until the upscaler section comes back.
-    env['THEORDER_EXPERIMENTAL_UPSCALER'] = '0'
+    env['THEORDER_EXPERIMENTAL_UPSCALER'] = '1' if s.get('experimental_upscaler') else '0'
     if s.get('update_dir'):
         env['THEORDER_PATCH_DIR'] = s['update_dir']
     if not WINDOWS:
@@ -719,7 +717,7 @@ def game_environment(s):
         env['THEORDER_GPU_ID'] = gpu_id
     env['THEORDER_BACKGROUND_WARMUP'] = '1' if s.get('background_warmup', True) else '0'
     env['THEORDER_PARALLEL_WARMUP'] = '1' if s.get('parallel_warmup', True) else '0'
-    env['THEORDER_PIPELINE_BINARIES'] = '1' if s.get('pipeline_binary_cache', True) else '0'
+    env['THEORDER_PIPELINE_BINARIES'] = '1' if s.get('pipeline_binary_cache', WINDOWS) else '0'
     env['THEORDER_PERF_DIAG'] = '1' if s.get('perf_diag', False) else '0'
     for key, name in (('frame_stats', 'THEORDER_FRAME_STATS'), ('gpu_profile', 'THEORDER_GPU_PROFILE'),
                       ('vk_validation', 'THEORDER_VK_VALIDATION'), ('frame_capture_key', 'THEORDER_FRAME_CAPTURE_KEY')):
@@ -1150,33 +1148,33 @@ class Launcher:
             return self.banner_image.subsample(factor) if factor > 1 else self.banner_image
 
     def build_graphics(self):
-        """Window and overlay controls; temporal upscaling stays commented out."""
+        """Display controls and opt-in temporal upscaling settings."""
         f = self.scrolled_page('graphics', _('Graphics', 'Графика'), _('How the game appears on your screen.'))
         self.build_display(f)
-        # Temporal upscaling is parked until its image quality is validated.
-        # self.section(f, _('Experimental'))
-        # self.check(f, 'experimental_upscaler', 'app', _('Enable the upscaler (experimental)'),
-        #            _('Off (default): the game runs without temporal upscaling; FSR 3.1 and TAA need this switch on. '
-        #              'FSR 3.1 is not calibrated for this game yet: expect ghosting or flicker. The remaining options require this switch; '
-        #              'leave it off for normal gameplay.',
-        #              'Выкл. (по умолчанию): игра без временного апскейлинга; FSR 3.1 и TAA нужен этот переключатель. '
-        #              'FSR 3.1 ещё не откалиброван для этой игры: возможны гостинг и мерцание.'), restart=True)
-        # self.section(f, _('Upscaling', 'Апскейлинг'))
-        # self.row(f, _('Upscaler', 'Апскейлер'), self.choice(f, 'upscaler', 'ini', UPSCALERS))
-        # self.row(f, _('Quality preset', 'Пресет'), self.choice(f, 'preset', 'ini', PRESETS),
-        #          _('Render scale per axis: Quality renders at 1/1.5 of the output size.',
-        #            'Масштаб рендера по каждой оси: Quality рисует в 1/1.5 размера вывода.'))
-        # self.row(f, _('Output resolution', 'Разрешение вывода'), self.choice(f, 'output_res', 'ini', OUTPUTS),
-        #          _('What the upscaler produces; the HUD is drawn at this size too.',
-        #            'Что выдаёт апскейлер; интерфейс рисуется в этом же размере.'))
-        # self.row(f, _('Live resolution changes', 'Смена разрешения на лету'), self.choice(f, 'live_resolution', 'ini', LIVE),
-        #          _('Off: outputs other than 1080p are set by a patch at start (fastest; changing them in the '
-        #            'game restarts it). On: change output and preset in the game without a restart, at a cost.',
-        #            'Выкл.: разрешения кроме 1080p задаются патчем при запуске (быстрее). Вкл.: менять в игре '
-        #            'без перезапуска, но медленнее.'))
-        # self.check(f, 'object_motion', 'ini', _('Object motion vectors', 'Векторы движения объектов'),
-        #            _('Less ghosting on characters, cloth and weapons; costs about 10% FPS.',
-        #              'Меньше гостинга на персонажах и одежде; стоит около 10% FPS.'))
+        # Keep uncalibrated temporal upscaling opt-in, with its controls visible.
+        self.section(f, _('Experimental'))
+        self.check(f, 'experimental_upscaler', 'app', _('Enable the upscaler (experimental)'),
+                   _('Off (default): the game runs without temporal upscaling; FSR 3.1 and TAA need this switch on. '
+                     'FSR 3.1 is not calibrated for this game yet: expect ghosting or flicker. The remaining options require this switch; '
+                     'leave it off for normal gameplay.',
+                     'Выкл. (по умолчанию): игра без временного апскейлинга; FSR 3.1 и TAA нужен этот переключатель. '
+                     'FSR 3.1 ещё не откалиброван для этой игры: возможны гостинг и мерцание.'), restart=True)
+        self.section(f, _('Upscaling', 'Апскейлинг'))
+        self.row(f, _('Upscaler', 'Апскейлер'), self.choice(f, 'upscaler', 'ini', UPSCALERS))
+        self.row(f, _('Quality preset', 'Пресет'), self.choice(f, 'preset', 'ini', PRESETS),
+                 _('Render scale per axis: Quality renders at 1/1.5 of the output size.',
+                   'Масштаб рендера по каждой оси: Quality рисует в 1/1.5 размера вывода.'))
+        self.row(f, _('Output resolution', 'Разрешение вывода'), self.choice(f, 'output_res', 'ini', OUTPUTS),
+                 _('What the upscaler produces; the HUD is drawn at this size too.',
+                   'Что выдаёт апскейлер; интерфейс рисуется в этом же размере.'))
+        self.row(f, _('Live resolution changes', 'Смена разрешения на лету'), self.choice(f, 'live_resolution', 'ini', LIVE),
+                 _('Off: outputs other than 1080p are set by a patch at start (fastest; changing them in the '
+                   'game restarts it). On: change output and preset in the game without a restart, at a cost.',
+                   'Выкл.: разрешения кроме 1080p задаются патчем при запуске (быстрее). Вкл.: менять в игре '
+                   'без перезапуска, но медленнее.'))
+        self.check(f, 'object_motion', 'ini', _('Object motion vectors', 'Векторы движения объектов'),
+                   _('Less ghosting on characters, cloth and weapons; costs about 10% FPS.',
+                     'Меньше гостинга на персонажах и одежде; стоит около 10% FPS.'))
 
     def build_display(self, f):
         """Window and overlay: the top of the Graphics page."""

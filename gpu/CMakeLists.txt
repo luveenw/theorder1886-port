@@ -78,6 +78,12 @@ if (NOT miniz_FOUND)
     add_library(miniz::miniz ALIAS miniz)
 endif()
 find_package(Zydis REQUIRED)
+# Debian/PikaOS Zydis 4.1 exports "Zycore" as a transitive dependency, while
+# Zycore's package defines Zycore::Zycore. Resolve that name as a CMake target
+# so private prefixes work without a global linker search path.
+if (TARGET Zycore::Zycore AND NOT TARGET Zycore)
+    add_library(Zycore ALIAS Zycore::Zycore)
+endif()
 find_program(GLSLANG_COMPILER NAMES glslang glslangValidator REQUIRED)
 
 set(SIRIT_USE_SYSTEM_SPIRV_HEADERS OFF CACHE BOOL "" FORCE)

@@ -4,6 +4,12 @@
 
 A work-in-progress PC port of **The Order: 1886** (PlayStation 4) for Windows 10 and 11.
 
+**PikaOS / Linux fork:** native build instructions, a no-root dependency bootstrap,
+and a portable launch script are in [packaging/linux/README.md](packaging/linux/README.md).
+Build with `bash build.sh`, then run `bash play-linux.sh --game-dir '/path/to/game'`.
+Use `bash launcher-linux.sh` for the graphical settings window and Play button.
+Measured Linux results are recorded in [docs/linux-validation.md](docs/linux-validation.md).
+
 The CPU side is native: the game's original executable runs directly on the PC's processor (the
 PS4 uses the same x86-64 architecture), and a runtime written for this port replaces the PS4
 system libraries, so there is no CPU emulator. The graphics are translated: they run on the
@@ -191,8 +197,9 @@ python tools/fault_stacks.py out/batch/*.log
 | Port menu | `gpu/shim/port_overlay.cpp` | The Dear ImGui menu and performance overlay |
 | Patches | `patches/TheOrder1886-Orbis.xml`, `scripts/patches.py` | Applied in memory at start |
 
-The launcher in `launcher/` and the Linux packaging in `packaging/linux/` come from the God of War
-III port and have not been adapted to this game.
+The Tk launcher and optional AppImage packaging retain code from the God of War III port.
+This fork adds the native Linux archive and `play-linux.sh` entry point documented in
+[packaging/linux/README.md](packaging/linux/README.md); the AppImage path is not part of its validation.
 
 ## Credits
 

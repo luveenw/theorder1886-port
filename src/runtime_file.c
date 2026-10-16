@@ -24,6 +24,7 @@ typedef struct _stat64 HostStat;
 #define host_lseek _lseeki64
 #define O_DIRECTORY 0x40000000 /* port marker, removed before _open */
 #else
+#include <strings.h>
 typedef struct stat HostStat;
 #define host_stat(path,s) stat(path,s)
 #define host_fstat(fd,s) fstat(fd,s)
@@ -91,6 +92,47 @@ void runtime_file_configure(const char *app0,const char *user) {
         runtime_file_mount(guest,path);
     }
 }
+#ifndef _WIN32
+/* Dumps copied through Windows can have differently cased asset directories.
+ * Keep exact matches, then resolve a unique case-insensitive component only on
+ * the read-only game mounts. Saves and other writable mounts stay case-sensitive. */
+static void asset_path_case(char *path,size_t root_length) {
+    struct stat st;
+    if (!lstat(path,&st)) return;
+    char *part=path+root_length;
+    while (*part) {
+        while (*part=='/') ++part;
+        if (!*part) break;
+        char *end=strchr(part,'/');
+        char saved_end=end ? *end : 0;
+        if (end) *end=0;
+        if (lstat(path,&st)) {
+            char first=*part; *part=0;
+            DIR *dir=opendir(path);
+            *part=first;
+            if (!dir) { if (end) *end=saved_end; return; }
+            char match[NAME_MAX+1]={0};
+            int matches=0;
+            struct dirent *entry;
+            while ((entry=readdir(dir))) {
+                if (!strcasecmp(part,entry->d_name)) {
+                    if (++matches>1) break;
+                    snprintf(match,sizeof(match),"%s",entry->d_name);
+                }
+            }
+            closedir(dir);
+            if (matches!=1 || strlen(match)!=strlen(part)) {
+                if (end) *end=saved_end;
+                return;
+            }
+            memcpy(part,match,strlen(match));
+        }
+        if (!end) break;
+        *end=saved_end;
+        part=end+1;
+    }
+}
+#endif
 /* Resolve a guest path to a host path; returns 0 or a host errno. */
 static int translate(const char *guest,char *out,size_t size) {
     if (!guest || !*guest) return ENOENT;
@@ -106,9 +148,17 @@ static int translate(const char *guest,char *out,size_t size) {
         if (!strncmp(buffer,mounts[i].guest,n) && (buffer[n]=='/' || !buffer[n]) && n>best) { best=n; m=&mounts[i]; }
     }
     int result=0;
+#ifndef _WIN32
+    size_t root_length=m ? strlen(m->host) : 0;
+    int asset=(!strncmp(buffer,"/app0",5) && (!buffer[5] || buffer[5]=='/')) ||
+              (!strncmp(buffer,"/hostapp",8) && (!buffer[8] || buffer[8]=='/'));
+#endif
     if (!m) result=ENOENT;
     else if ((size_t)snprintf(out,size,"%s%s",m->host,buffer+best)>=size) result=ENAMETOOLONG;
     pthread_mutex_unlock(&lock);
+#ifndef _WIN32
+    if (!result && asset) asset_path_case(out,root_length);
+#endif
     if (result==ENOENT) fprintf(stderr,"Runtime: no mount for guest path %s\n",guest);
     return result;
 }

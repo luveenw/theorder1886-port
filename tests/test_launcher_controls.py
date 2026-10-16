@@ -33,7 +33,10 @@ class ControlMapTest(unittest.TestCase):
 
     def test_pipeline_binary_cache_switch(self):
         settings = {**launcher.APP_DEFAULTS}
-        self.assertTrue(settings['pipeline_binary_cache'])
+        self.assertEqual(settings['pipeline_binary_cache'], launcher.WINDOWS)
+        self.assertEqual(launcher.game_environment(settings)['THEORDER_PIPELINE_BINARIES'],
+                         '1' if launcher.WINDOWS else '0')
+        settings['pipeline_binary_cache'] = True
         self.assertEqual(launcher.game_environment(settings)['THEORDER_PIPELINE_BINARIES'], '1')
         settings['pipeline_binary_cache'] = False
         self.assertEqual(launcher.game_environment(settings)['THEORDER_PIPELINE_BINARIES'], '0')
@@ -96,11 +99,10 @@ class ControlMapTest(unittest.TestCase):
         self.assertEqual(launcher.game_environment({**settings, 'parallel_warmup': False})['THEORDER_PARALLEL_WARMUP'], '0')
         self.assertEqual(launcher.game_environment({**settings, 'background_warmup': False})['THEORDER_BACKGROUND_WARMUP'], '0')
 
-    def test_temporal_upscaler_stays_off_with_a_saved_2_1_8_switch(self):
-        # 2.1.8 showed the experimental switch; a player who turned it on must not keep it on now that it is hidden.
+    def test_temporal_upscaler_requires_the_visible_experimental_switch(self):
         for saved in (True, False, None):
             env = launcher.game_environment({**launcher.APP_DEFAULTS, 'experimental_upscaler': saved})
-            self.assertEqual(env['THEORDER_EXPERIMENTAL_UPSCALER'], '0')
+            self.assertEqual(env['THEORDER_EXPERIMENTAL_UPSCALER'], '1' if saved else '0')
 
     def test_settings_keys_kept(self):
         # The redesign hides some options (player name) but keeps every saved setting working.

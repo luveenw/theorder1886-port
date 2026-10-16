@@ -433,7 +433,9 @@ static ABI int32_t direct_allocate(int64_t low, int64_t high, uint64_t size,
     if (!alignment) alignment = PAGE;
     if (!out || low < 0 || high < 0 || !size || size % PAGE || !valid_alignment(alignment) || type < 0 || type > 10)
         return INVALID;
-    uint64_t end = align_up((uint64_t)high, PAGE);
+    /* searchEnd is an exclusive bound, not a size to round up. Rounding it
+     * could return a physical allocation extending beyond the guest's range. */
+    uint64_t end = (uint64_t)high;
     if (end > POOL_SIZE) end = POOL_SIZE;
     if ((uint64_t)low >= end || size > end - (uint64_t)low) {
         printf("direct_allocate early reject: low=0x%llx, high=0x%llx, end=0x%llx, size=0x%llx, POOL_SIZE=0x%llx\n",

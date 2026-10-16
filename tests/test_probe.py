@@ -49,12 +49,17 @@ class LoaderTests(unittest.TestCase):
                     self.assertEqual(r.returncode,1,r.stdout+r.stderr)
                     self.assertIn('content profile',r.stderr)
 
-    def run_image(self, data, *options):
+    def run_image(self, data, *options, env=None):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / 'boot.bin'
             path.write_bytes(data)
             return subprocess.run([str(EXE.resolve()), str(path), '--cpu-only', *options],
-                                  capture_output=True, text=True, timeout=5)
+                                  capture_output=True, text=True, timeout=5, env=env)
+
+    def test_startup_trace_rejects_unrelated_image(self):
+        r = self.run_image(package(b'\xc3'), env={**os.environ, 'THEORDER_STARTUP_TRACE': '1'})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn('startup trace is incompatible', r.stderr)
 
     def test_original_instruction_reaches_named_import(self):
         # jmp [rip+2]; two padding bytes; relocated function pointer at +8

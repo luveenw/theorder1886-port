@@ -184,6 +184,8 @@ static void direct_memory(void) {
     const uint64_t pool=536870912, length=16384;
     assert((uint32_t)alloc(0,pool,1,0,0,&a)==0x80020016 && a==-1);
     assert((uint32_t)alloc(0,8192,length,0,0,&a)==0x80020023);
+    assert((uint32_t)alloc(0,length-1,length,0,0,&a)==0x80020023 && a==-1);
+    assert((uint32_t)alloc(1,length,length,0,0,&a)==0x80020023 && a==-1);
     assert(alloc(0,pool,length,2097152,0,&a)==0 && a==0);
     assert(alloc(0,pool,length,2097152,0,&b)==0 && b==2097152);
     assert(alloc(0,pool,length,16384,0,&c)==0 && c==16384);
@@ -355,6 +357,7 @@ int main(int argc,char **argv) {
     if (argc>1 && !strcmp(argv[1],"--rwlock-lifecycle")) { rw_lifecycle(); return 0; }
     if (argc>1 && !strcmp(argv[1],"--rwlock-concurrency")) { rw_concurrency(); return 0; }
     if (argc>1 && !strcmp(argv[1],"--rwlock-timeouts")) { rw_timeouts(); return 0; }
+    if (argc>1 && !strcmp(argv[1],"--direct-memory")) { direct_memory(); return 0; }
     libc_support(); posix_mutexes(); wall_time(); exit_handlers(); guards(); mutexes(); direct_memory(); memory_primitives();
     rw_lifecycle(); rw_concurrency(); rw_timeouts();
     puts("PASS: callback lifecycle, guard ABI, mutex errors, shared direct memory, memory primitives, resolver scope");

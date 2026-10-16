@@ -52,6 +52,9 @@ int main(int argc,char **argv) {
     struct { uint32_t hits,canary; } h={99,0xabcdef};
     assert(list(0,NULL,0,&h.hits)==0 && h.hits==0 && h.canary==0xabcdef);
     assert(list(0,entries,2,&h.hits)==0 && h.hits==0);
+    h.hits=99;
+    assert(list(1,NULL,0,&h.hits)==0 && h.hits==0 && h.canary==0xabcdef);
+    assert(list(UINT32_MAX,entries,2,&h.hits)==0 && h.hits==0);
     for (unsigned i=0;i<sizeof(entries);++i) assert(entries[i]==0xaa);
     assert((uint32_t)list(0,NULL,0,NULL)==0x80d90002);
     assert(unload(0xb4)==0 && loaded(0xb4)==0);

@@ -20,6 +20,21 @@ int main(void) {
     FILE *f=fopen(source,"w"); assert(f); assert(fputs("modded",f)>=0); assert(!fclose(f));
     assert(!symlink(source,link));
     runtime_file_configure(game,user);
+#ifndef _WIN32
+    /* Windows dumps can contain GPU/Shader.BIN while the guest asks for gpu/shader.bin. */
+    char gpu_dir[512], shader[512];
+    snprintf(gpu_dir,sizeof(gpu_dir),"%s/game/GPU",root);
+    snprintf(shader,sizeof(shader),"%s/game/GPU/Shader.BIN",root);
+    assert(!mkdir(gpu_dir,0755));
+    f=fopen(shader,"w"); assert(f); assert(fputs("shader",f)>=0); assert(!fclose(f));
+    int shader_fd=(int)do_open("/app0/gpu/shader.bin",0,0); assert(shader_fd>=3);
+    char shader_data[8]={0};
+    assert(do_read(shader_fd,shader_data,6)==6 && !strcmp(shader_data,"shader"));
+    assert(!do_close(shader_fd));
+    GuestStat shader_info; assert(!do_stat("/hostapp/gpu/SHADER.bin",&shader_info) && shader_info.size==6);
+    assert(do_open("/app0/gpu/shader.bin",2,0)==-EROFS);
+    assert(!unlink(shader) && !rmdir(gpu_dir));
+#endif
     for (int i=0;i<3;++i) {
         const char *path=i==0 ? "/app0/asset.dcx" : i==1 ? "/hostapp/asset.dcx" : "asset.dcx";
         int fd=(int)do_open(path,0,0); assert(fd>=3);

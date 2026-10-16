@@ -1151,7 +1151,14 @@ int main(int argc, char **argv) {
 #ifdef _WIN32
     printf("Guest TCB loads redirected to the TEB TLS slot: %" PRIu64 "\n", patch_tcb_loads(segments, ns));
 #endif
-    install_order1886_diagnostics();
+    /* These inherited startup traces patch fixed offsets in one game build.
+     * Normal launches and synthetic loader fixtures must execute unmodified. */
+    const char *startup_trace = getenv("THEORDER_STARTUP_TRACE");
+    if (startup_trace && !strcmp(startup_trace,"1")) {
+        if (!mapped(segments,ns,0x44d0a4,5) || !mapped(segments,ns,0xa82aed,5) ||
+            !mapped(segments,ns,0x16b3420,8)) fail("startup trace is incompatible with this image");
+        install_order1886_diagnostics();
+    }
     if (isa_table) {
         IsaReport r = isa_rewrite_apply(isa_table, image, stubs, isa_sets);
         if (r.unsupported_needed) {
@@ -1202,12 +1209,9 @@ int main(int argc, char **argv) {
     uint64_t main_init = 0x20;
     if (entry_calls(image, entry, main_init)) {
         printf("Main executable initializer at offset 0x%" PRIx64 ": the entry runs it\n", main_init);
-    } else if (mapped(segments, ns, main_init, 1)) {
-        printf("Running main executable initializer at offset 0x%" PRIx64 "\n", main_init);
-        typedef void (ABI *MainInit)(void);
-        ((MainInit)(image + main_init))();
-        printf("Main executable initializer finished\n");
     }
+    /* The prepared image has no main DT_INIT metadata. An unrelated image
+     * having mapped bytes at 0x20 does not make those bytes an initializer. */
     printf("Entering original x86-64 code at guest offset 0x%" PRIx64 "\n", entry);
     guest_args[guest_arg_count] = NULL;
     runtime_set_guest_args(guest_arg_count, guest_args);

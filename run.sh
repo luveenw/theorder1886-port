@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd -- "$(dirname -- "$0")"
+source packaging/linux/deps-env.sh
 if [[ ${1:-} == --software ]]; then
     shift
     if [[ -z ${VK_DRIVER_FILES:-} ]]; then

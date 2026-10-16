@@ -225,7 +225,13 @@ std::string Instance::GetDriverVersionName() {
 namespace {
 bool PipelineBinaryCacheRequested() {
     const char* setting = std::getenv("THEORDER_PIPELINE_BINARIES");
+#ifdef __linux__
+    // Opt-in on Linux: NVIDIA 595.104.02 corrupts a callee-saved register in
+    // vkGetPipelineKeyKHR on this host. Normal pipeline compilation is stable.
+    return setting && *setting != '0';
+#else
     return !setting || *setting != '0';
+#endif
 }
 }
 
