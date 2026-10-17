@@ -290,19 +290,30 @@ def external_selection(found, config):
             if key in enabled or (key not in disabled and meta.get('isEnabled','false').lower()=='true')]
 
 
-def compile_external(selected, segments):
-    """Writes of the selected external patches; a patch with unsupported lines is skipped whole."""
+def compile_external(selected, segments, image=None, reference_build=True):
+    """External writes, located by signature on other builds. Reject an entire patch when
+    any site is missing, ambiguous or unsupported; raw addresses require the reference build."""
     writes=[]
     for key,_,meta in selected:
         try:
             ours=[]
             for line in meta.iter('Line'):
-                offset=int(line.get('Address') or '',0)-EBOOT_BASE
+                if not reference_build and not line.get('Pattern'):
+                    raise ValueError('raw addresses require the reference executable; this build needs signatures')
+                if line.get('Pattern'):
+                    if image is None:
+                        raise ValueError('signature patch requires the executable image')
+                    offset=locate(image,line)
+                else:
+                    # shadPS4's XML addresses include the PS4 executable load bias;
+                    # the native loader writes offsets into the eboot image.
+                    bias=0 if meta.get('isOffset','false').lower()=='true' else 0x400000
+                    offset=int(line.get('Address') or '',0)-bias
                 data=encode(line)
                 if not any(start<=offset and offset+len(data)<=end for start,end in segments):
                     raise ValueError(f'address {line.get("Address")} is outside the eboot')
                 ours.append((offset,data))
-        except ValueError as error:
+        except (ValueError, LookupError) as error:
             print(f'Patches: skipped {key}: {error}',file=sys.stderr)
             continue
         writes+=ours
@@ -345,11 +356,12 @@ def main():
     writes=compile_patches(xml,names,None,segments,eboot_image(elf),skipped)
     for name,reason in skipped.items():
         print(f'Patches: {name} skipped ({reason} in this eboot.bin)')
-    if a.patches_dir and sha==REFERENCE_SHA256:
-        # Third-party files use the absolute addresses of the reference build, so they are only
-        # applied there. After the built-in ones: an external patch of the same bytes wins.
+    if a.patches_dir:
+        # Other builds need a unique signature at every site; never silently apply their raw
+        # reference addresses. After the built-in ones, an external write takes precedence.
         writes+=compile_external(external_selection(external_patches(a.patches_dir,tag,xml,ids),
-                                                    a.patches_config),segments)
+                                                    a.patches_config),segments,eboot_image(elf),
+                                 reference_build=sha==REFERENCE_SHA256)
     write_patches(a.out,writes)
     applied=[n for n in names if n not in skipped]
     (a.out/'patch_status.json').write_text(json.dumps({'sha256':sha,'applied':applied,'skipped':skipped}))

@@ -56,7 +56,7 @@ class GraphicsOptionsTest(unittest.TestCase):
                          ['Skip Intro Logos', 'Aspect Ratio - 16:9', 'Frame Rate Patch - 240 FPS'])
         original = g.startup_options({'engine_fps': '60'})
         self.assertEqual(g.patch_names(['Aspect Ratio - 21:9', 'Skip Intro Logos'], original),
-                         ['Skip Intro Logos'])
+                         ['Skip Intro Logos', 'Aspect Ratio - Original'])
 
     def test_applied_engine_fps(self):
         # The engine runs above 60 only with a frame rate patch in the applied list.

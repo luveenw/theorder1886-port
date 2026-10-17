@@ -220,6 +220,9 @@ static void sample_host(PadData *d) {
     d->orientation[3]=1.0f;
     d->connected=1; d->connected_count=connected_count ? connected_count : 1;
     d->timestamp=now_us();
+    /* Reproducible diagnostic playback: only pad-file/replay input reaches the game. */
+    const char *exclusive=getenv("THEORDER_PAD_EXCLUSIVE");
+    if (exclusive && exclusive[0]=='1') return;
     SDL_Gamepad *g=current_gamepad();
     if (theordergpu_overlay_captures_input()) return; /* settings menu open: neutral input */
     const bool *k=SDL_WasInit(SDL_INIT_VIDEO) ? SDL_GetKeyboardState(NULL) : NULL;

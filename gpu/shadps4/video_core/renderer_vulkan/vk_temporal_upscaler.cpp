@@ -246,17 +246,6 @@ void TemporalUpscaler::OnSceneColor(VideoCore::ImageId color) {
     scene_color = color;
 }
 
-namespace {
-float Halton(u32 index, u32 base) {
-    float f = 1.0f, result = 0.0f;
-    for (u32 i = index; i > 0; i /= base) {
-        f /= float(base);
-        result += f * float(i % base);
-    }
-    return result;
-}
-} // namespace
-
 bool TemporalUpscaler::ReducedScene(const VideoCore::Image& color) const {
     return !scaled_session && scene_targets.Reduced() && scene_targets.EligibleScene(color);
 }
@@ -294,6 +283,8 @@ bool TemporalUpscaler::OnFrameStart() {
     const int preset = PortSettings::RenderPreset();
     if (applied_preset != preset || settings.upscaler == PortSettings::UpscalerOff) failed = false;
     const bool active = Active();
+    PortSettings::Get().active_upscaler = dispatched_last_frame ? applied_upscaler :
+                                                               PortSettings::UpscalerOff;
     const bool jitter_on = active && settings.jitter && !PortToggle::Disabled(1u << 25);
     const int upscaler = settings.upscaler.load();
     const int output = settings.output_res.load();
@@ -325,7 +316,6 @@ bool TemporalUpscaler::OnFrameStart() {
     PortSettings::Get().active_render_width = Scaled() ? render_width : scene_targets.Size().width;
     PortSettings::Get().active_render_height = Scaled() ? render_height : scene_targets.Size().height;
     if (changed || !dispatched_last_frame) reset = true;
-    if (changed) jitter_index = 0;
     applied_preset = preset;
     applied_output = output;
     applied_upscaler = upscaler;
@@ -343,17 +333,11 @@ bool TemporalUpscaler::OnFrameStart() {
     snapshot_taken = false;
     opaque_valid = false;
     mask_ready = false;
-    // Halton(2, 3); the menu or toggle 1 << 25 disables it.
-    if (!jitter_on) {
-        jitter = {};
-        return changed;
-    }
-    // CameraMotion::OnDisplayPass has already cleared Depth(). Use the context's render
-    // size, which survives the frame boundary (Performance 960 -> 1920 needs 32 phases).
+    // A selected provider may never find this title's camera or reconstruction pass.
+    // Only jitter after an actual successful resolve; a menu label is not that proof.
     const u32 phases = Scaled() ? Motion::JitterPhases(render_width, target_width)
         : Motion::JitterPhases(scene_targets.Size().width, 1920);
-    jitter_index = jitter_index % phases + 1;
-    jitter = {Halton(jitter_index, 2) - 0.5f, Halton(jitter_index, 3) - 0.5f};
+    jitter = jitter_sequence.Next(phases, jitter_on, changed);
     return changed;
 }
 
@@ -1167,6 +1151,7 @@ void TemporalUpscaler::Run() {
     if (dispatched) {
         reset = false;
         dispatched_last_frame = true;
+        jitter_sequence.Reconstructed();
         if (PortSettings::Get().upscaler != PortSettings::UpscalerTaa) {
             ExtraSharpen(cmdbuf, vk::Image(output_image), false, ow, oh);
         }
@@ -1661,6 +1646,7 @@ void TemporalUpscaler::RunScaled() {
                     vk::PipelineStageFlagBits2::eColorAttachmentOutput, color_access);
             reset = false;
             dispatched_last_frame = true;
+            jitter_sequence.Reconstructed();
             if (const int dump = DumpFrame(); dump >= 0) {
                 DumpImages(instance, scheduler, cmdbuf, dump,
                            {{color_image, source_width, source_height, 4, "input", "rgba"},
@@ -1752,6 +1738,7 @@ void TemporalUpscaler::RunScaled() {
         ok = true;
         reset = false;
         dispatched_last_frame = true;
+        jitter_sequence.Reconstructed();
         ExtraSharpen(cmdbuf, vk::Image(ui_image), true, ow, oh);
     }
     barrier(vk::Image(ui_image), vk::ImageAspectFlagBits::eColor, vk::ImageLayout::eGeneral, all,

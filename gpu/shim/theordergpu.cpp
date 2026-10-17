@@ -272,7 +272,9 @@ extern "C" int theordergpu_init(const TheOrderGpuConfig *config) {
     setenv("THEORDER_GPU_USER_DIR", config->user_dir, 0);
 #endif
   Core::Emulator::FillElfInfo(*config);
-  const std::string title = config->title ? config->title : "The Order: 1886";
+  const char *title_override = std::getenv("THEORDER_WINDOW_TITLE");
+  const std::string title = title_override ? title_override :
+      config->title ? config->title : "The Order: 1886";
   const s32 width = config->width, height = config->height;
   g_window_thread = std::thread([title, width, height] {
     Common::SetCurrentThreadName("port:window");

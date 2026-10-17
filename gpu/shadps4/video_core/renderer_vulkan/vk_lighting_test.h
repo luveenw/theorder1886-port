@@ -86,10 +86,10 @@ inline std::string Marker(Flags flags) {
     return line;
 }
 
-/// Bits for the knobs that change recompiled SPIR-V: `dref` here and `shaderext` of
-/// vk_amd_paths.h.
-inline std::uint32_t ShaderBinarySalt(bool dref, bool shaderext) {
-    return (dref ? 1u : 0u) | (shaderext ? 2u : 0u);
+/// Compiler modes that change SPIR-V or descriptor layouts: shadow comparisons,
+/// vendor extensions and dynamic GPU pointer reads (DMA).
+inline std::uint32_t ShaderBinarySalt(bool dref, bool shaderext, bool dma = false) {
+    return (dref ? 1u : 0u) | (shaderext ? 2u : 0u) | (dma ? 4u : 0u);
 }
 
 /// The shader binary cache version for a salt: distinct from every plain version bump.

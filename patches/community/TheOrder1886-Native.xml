@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Native-port adapter for the resolution setup used by illusion's ShadPS4 patches.
+     Both the display and picture viewport need changing. Every write is found by
+     a unique instruction signature; the original game files are never modified. -->
+<Patch>
+    <TitleID><ID>CUSA00035</ID><ID>CUSA00070</ID><ID>CUSA00076</ID><ID>CUSA00100</ID><ID>CUSA00670</ID><ID>CUSA00785</ID></TitleID>
+    <Metadata Title="The Order 1886" Name="Native render resolution - 1080p"
+              Author="illusion; native viewport adaptation by theorder1886-port"
+              Note="1920x1080 display and scene viewport. Restart required. Use without experimental live scene scaling."
+              PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Value="9090" At="2" Pattern="a8 80 75 41 c7 85 84 fc ff ff 00 05 00 00 c7 85 88 fc ff ff d0 02 00 00 c7 85 d0 fb ff ff 00 00 00 00 c7 85 d4 fb ff ff 00 00 00 00 c7 85 d8 fb ff ff 00 05 00 00 c7 85 dc fb ff ff d0 02 00 00"/>
+            <Line Type="bytes32" Value="0x780" At="10" Pattern="a8 80 75 41 c7 85 84 fc ff ff 00 05 00 00 c7 85 88 fc ff ff d0 02 00 00 c7 85 d0 fb ff ff 00 00 00 00 c7 85 d4 fb ff ff 00 00 00 00 c7 85 d8 fb ff ff 00 05 00 00 c7 85 dc fb ff ff d0 02 00 00"/>
+            <Line Type="bytes32" Value="0x438" At="20" Pattern="a8 80 75 41 c7 85 84 fc ff ff 00 05 00 00 c7 85 88 fc ff ff d0 02 00 00 c7 85 d0 fb ff ff 00 00 00 00 c7 85 d4 fb ff ff 00 00 00 00 c7 85 d8 fb ff ff 00 05 00 00 c7 85 dc fb ff ff d0 02 00 00"/>
+            <Line Type="bytes32" Value="0x780" At="50" Pattern="a8 80 75 41 c7 85 84 fc ff ff 00 05 00 00 c7 85 88 fc ff ff d0 02 00 00 c7 85 d0 fb ff ff 00 00 00 00 c7 85 d4 fb ff ff 00 00 00 00 c7 85 d8 fb ff ff 00 05 00 00 c7 85 dc fb ff ff d0 02 00 00"/>
+            <Line Type="bytes32" Value="0x438" At="60" Pattern="a8 80 75 41 c7 85 84 fc ff ff 00 05 00 00 c7 85 88 fc ff ff d0 02 00 00 c7 85 d0 fb ff ff 00 00 00 00 c7 85 d4 fb ff ff 00 00 00 00 c7 85 d8 fb ff ff 00 05 00 00 c7 85 dc fb ff ff d0 02 00 00"/>
+        </PatchList>
+    </Metadata>
+</Patch>

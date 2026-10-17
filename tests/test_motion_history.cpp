@@ -104,6 +104,27 @@ int main() {
     ranges.Trim(IndexRangeCache::Revalidate + IndexRangeCache::Unused + 1);
     assert(ranges.Size() == 0);
 
+    // A title with no matching resolve pass must never receive camera jitter,
+    // regardless of which temporal provider the settings menu requests.
+    TemporalJitter sequence;
+    const std::array<float, 2> zero{};
+    for (int frame = 0; frame < 10; ++frame) assert(sequence.Next(8, true, false) == zero);
+    sequence.Reconstructed();
+    auto jitter = sequence.Next(8, true, false);
+    assert(jitter[0] == 0.0f && std::abs(jitter[1] + 1.0f/6.0f) < 1e-6f);
+    sequence.Reconstructed();
+    jitter = sequence.Next(8, true, false);
+    assert(jitter[0] == -0.25f && std::abs(jitter[1] - 1.0f/6.0f) < 1e-6f);
+    assert(sequence.Next(8, true, false) == zero); // a missed resolve
+    sequence.Reconstructed();
+    assert(sequence.Next(8, false, false) == zero); // disabled, consumes old history
+    assert(sequence.Next(8, true, false) == zero); // re-enabled, needs a new resolve
+    sequence.Reconstructed();
+    assert(sequence.Next(8, true, true) == zero); // provider/size change
+    sequence.Reconstructed();
+    jitter = sequence.Next(8, true, false);
+    assert(jitter[0] == 0.0f && std::abs(jitter[1] + 1.0f/6.0f) < 1e-6f);
+
     assert(JitterPhases(1920, 1920) == 8);
     assert(JitterPhases(1280, 1920) == 18);
     assert(JitterPhases(960, 1920) == 32);

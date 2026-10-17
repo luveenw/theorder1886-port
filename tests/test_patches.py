@@ -16,21 +16,62 @@ EXTERNAL = """<?xml version="1.0"?>
 <Patch>
   <TitleID><ID>CUSA00035</ID></TitleID>
   <Metadata Title="The Order 1886" Name="On" Author="x" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="true">
-    <PatchList><Line Type="bytes" Address="0x00001000" Value="9090"/></PatchList>
+    <PatchList><Line Type="bytes" Address="0x00401000" Value="9090"/></PatchList>
   </Metadata>
   <Metadata Title="The Order 1886" Name="Off" Author="x" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin">
-    <PatchList><Line Type="bytes32" Address="0x00002000" Value="0x12345678"/></PatchList>
+    <PatchList><Line Type="bytes32" Address="0x00402000" Value="0x12345678"/></PatchList>
   </Metadata>
   <Metadata Title="The Order 1886" Name="Mask" Author="x" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="true">
     <PatchList><Line Type="mask" Value="90 ?? 90" Offset="0"/></PatchList>
   </Metadata>
   <Metadata Title="The Order 1886" Name="Old" Author="x" PatchVer="1.0" AppVer="01.00" AppElf="eboot.bin" isEnabled="true">
-    <PatchList><Line Type="bytes" Address="0x00003000" Value="90"/></PatchList>
+    <PatchList><Line Type="bytes" Address="0x00403000" Value="90"/></PatchList>
   </Metadata>
 </Patch>"""
 
 
 class ExternalPatchTests(unittest.TestCase):
+    def test_native_1080_patch_sets_display_and_picture_size(self):
+        # Actual 720p setup instructions: the upstream patch changes only the first
+        # width/height pair, leaving the picture viewport at 720p.
+        code = bytes.fromhex('a8807541c78584fcffff00050000c78588fcffffd0020000'
+                             'c785d0fbffff00000000c785d4fbffff00000000'
+                             'c785d8fbffff00050000c785dcfbffffd0020000')
+        adapter = ROOT / 'patches/community/TheOrder1886-Native.xml'
+        found = external_patches(adapter.parent, '01.02', ORDER, ORDER_IDS)
+        selected = [row for row in found if row[0].endswith('/Native render resolution - 1080p')]
+        self.assertEqual(len(selected), 1)
+        image = bytearray(b'\0' * 16 + code + b'\0' * 16)
+        writes = compile_external(selected, [(0, len(image))], image=bytes(image), reference_build=False)
+        self.assertEqual(len(writes), 5)
+        for offset, data in writes:
+            image[offset:offset+len(data)] = data
+        import struct
+        self.assertEqual(image[18:20], b'\x90\x90')
+        for offset in (10, 50): self.assertEqual(struct.unpack_from('<I', image, 16+offset)[0], 1920)
+        for offset in (20, 60): self.assertEqual(struct.unpack_from('<I', image, 16+offset)[0], 1080)
+
+    def test_other_build_requires_unique_signatures_for_every_write(self):
+        import contextlib
+        import io
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'external.xml'
+            path.write_text(EXTERNAL)
+            found = external_patches(path.parent, '01.02', ORDER, ORDER_IDS)
+            meta = found[0][2]
+            lines = list(meta.iter('Line'))
+            lines[0].set('Pattern', '11 22 ?? 44 55 66')
+            lines[0].set('At', '1')
+            image = bytes.fromhex('00 11 22 33 44 55 66 00')
+            self.assertEqual(compile_external(found[:1], [(0, len(image))],
+                                              image=image, reference_build=False), [(2, b'\x90\x90')])
+            with contextlib.redirect_stderr(io.StringIO()):
+                self.assertEqual(compile_external(found[:1], [(0, 8)], image=image + image,
+                                                  reference_build=False), [])
+                lines[0].attrib.pop('Pattern')
+                self.assertEqual(compile_external(found[:1], SEGMENTS, image=image,
+                                                  reference_build=False), [])
+
     def test_selection_and_unsupported_lines(self):
         with tempfile.TemporaryDirectory() as directory:
             folder = Path(directory)
@@ -166,6 +207,15 @@ class SignatureTests(unittest.TestCase):
         self.assertEqual(patch_requirements(notes, ['Big'], '01.02'), (5056 + 6144, None))
         self.assertEqual(patch_requirements(notes, ['Fast'], '01.02'), (None, 120))
         self.assertEqual(patch_requirements(notes, [], '01.02'), (None, None))
+
+    def test_original_aspect_restores_prepatched_fullscreen_setup(self):
+        import struct
+        # This dump already has the fullscreen float, even with no selected patch.
+        image = bytes.fromhex('c7 85 18 fc ff ff 39 8e e3 3f '
+                              'c7 85 d0 fb ff ff 00 00 00 00')
+        writes = compile_patches(ORDER, ['Aspect Ratio - Original'], None,
+                                 [(0, len(image))], image, {})
+        self.assertEqual(writes, [(6, struct.pack('<f', 2.4))])
 
     def test_the_order_patches_compile(self):
         names = [m.get('Name') for m in ET.parse(ORDER).getroot().iter('Metadata')]

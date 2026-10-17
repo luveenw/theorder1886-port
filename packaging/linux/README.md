@@ -112,3 +112,11 @@ See `docs/linux-port-research.md` in the source checkout for source analysis and
 `docs/linux-validation.md` for the measured build/runtime results. Successful
 compilation and Vulkan checks alone do not establish complete gameplay, sound,
 save/load, or support for every game region and graphics driver.
+
+For the supplied version 01.02 executable with pre-applied 720p/fullscreen changes,
+use **Original** aspect and the signature-based **Native render resolution - 1080p**
+adapter in `patches/community/TheOrder1886-Native.xml` (select that folder in
+Patches). Keep experimental temporal upscaling off for the validated baseline.
+A 1440p output window does not itself increase internal scene resolution. Native
+1440p rendering and the remaining facial black spots are not resolved; see
+`docs/linux-validation.md` for the measured limits.

@@ -91,8 +91,10 @@ def prepare(config, state_path):
 def patch_names(names, options):
     """The launcher's patch list with the aspect ratio and frame rate patches of `options`."""
     names = [n for n in names if not n.startswith(ASPECT_PREFIX) and not n.startswith(FPS_PREFIX)]
-    if options['aspect_ratio'] != 'original':
-        names.append(f'{ASPECT_PREFIX} - {options["aspect_ratio"]}')
+    # Some supplied executables already contain a fullscreen aspect patch. Explicitly
+    # restore the original picture instead of assuming that no patch means original.
+    aspect = 'Original' if options['aspect_ratio'] == 'original' else options['aspect_ratio']
+    names.append(f'{ASPECT_PREFIX} - {aspect}')
     if options['engine_fps'] != '60':
         names.append(f'{FPS_PREFIX} - {options["engine_fps"]} FPS')
     return names

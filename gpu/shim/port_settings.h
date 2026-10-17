@@ -29,6 +29,8 @@ inline constexpr int MenuTabCount = 3;
 
 struct Values {
     std::atomic<int> upscaler{UpscalerFsr3};
+    /// Provider that actually reconstructed the previous frame; Off for native fallback.
+    std::atomic<int> active_upscaler{UpscalerOff};
     std::atomic<int> preset{NativeAA};
     std::atomic<bool> sharpen{true};
     std::atomic<float> sharpness{0.3f};

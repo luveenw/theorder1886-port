@@ -49,13 +49,17 @@ namespace Vulkan {
 extern std::atomic<u64> g_port_pipeline_driver_ns;
 
 namespace {
-// port: the test knobs that change recompiled SPIR-V (THEORDER_LIGHTING_TEST=dref,
-// THEORDER_AMD_PATHS_OFF=shaderext) get their own shader binary cache version.
+// These modes affect both generated shaders and pipeline descriptor layouts.
+u32 CurrentCompilerSalt() {
+    return LightingTest::ShaderBinarySalt(LightingTest::Current().dref,
+                                         AmdPathsOff::Current().shaderext,
+                                         EmulatorSettings.IsDirectMemoryAccessEnabled());
+}
 u32 CurrentShaderBinaryVersion() {
-    return LightingTest::ShaderBinaryVersion(
-        Serialization::ShaderBinaryVersion,
-        LightingTest::ShaderBinarySalt(LightingTest::Current().dref,
-                                       AmdPathsOff::Current().shaderext));
+    return LightingTest::ShaderBinaryVersion(Serialization::ShaderBinaryVersion, CurrentCompilerSalt());
+}
+u32 CurrentPipelineKeyVersion() {
+    return LightingTest::ShaderBinaryVersion(Serialization::PipelineKeyVersion, CurrentCompilerSalt());
 }
 } // namespace
 
@@ -673,7 +677,7 @@ void RegisterPipelineData(const ComputePipelineKey& key,
     Serialization::Archive ar{};
     Serialization::Writer pldata{ar};
 
-    pldata.Write(Serialization::PipelineKeyVersion);
+    pldata.Write(CurrentPipelineKeyVersion());
     pldata.Write(u32{1}); // compute
 
     key.Serialize(ar);
@@ -692,7 +696,7 @@ void RegisterPipelineData(const GraphicsPipelineKey& key, u64 hash,
     Serialization::Archive ar{};
     Serialization::Writer pldata{ar};
 
-    pldata.Write(Serialization::PipelineKeyVersion);
+    pldata.Write(CurrentPipelineKeyVersion());
     pldata.Write(u32{0}); // graphics
 
     key.Serialize(ar);
@@ -1155,7 +1159,7 @@ void PipelineCache::WarmUp(const std::function<void(u32, u32)>& progress) {
 
             u32 version{};
             pldata.Read(version);
-            if (version != Serialization::PipelineKeyVersion) {
+            if (version != CurrentPipelineKeyVersion()) {
                 return;
             }
 
@@ -1341,7 +1345,7 @@ void PipelineCache::ReadWarmEntry(BackgroundWarmup& warm, std::vector<u8>&& data
     Serialization::Reader pldata{ar};
     u32 version{};
     pldata.Read(version);
-    if (version != Serialization::PipelineKeyVersion) {
+    if (version != CurrentPipelineKeyVersion()) {
         return skip();
     }
     u32 is_compute{};

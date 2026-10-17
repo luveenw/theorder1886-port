@@ -184,6 +184,20 @@ int main(void) {
     usleep(220000);
     data=read_pad();
     assert(data.buttons==0 && data.touch_count==0);
+    /* Diagnostic playback must keep physical movement/menu presses out of captures. */
+    assert(SDL_SetJoystickVirtualButton(joystick,SDL_GAMEPAD_BUTTON_START,true));
+    pump();
+    data=read_pad();
+    assert(data.buttons & BTN_OPTIONS);
+    setenv("THEORDER_PAD_EXCLUSIVE","1",1);
+    inject(path,"cross lx=64");
+    data=read_pad();
+    assert(data.buttons==BTN_CROSS && data.left_x==64 && data.right_x==128);
+    setenv("THEORDER_PAD_EXCLUSIVE","0",1);
+    inject(path,"");
+    data=read_pad();
+    assert(data.buttons & BTN_OPTIONS);
+    assert(SDL_SetJoystickVirtualButton(joystick,SDL_GAMEPAD_BUTTON_START,false));
     SDL_CloseJoystick(joystick);
     if (gamepad) SDL_CloseGamepad(gamepad);
     gamepad=NULL;

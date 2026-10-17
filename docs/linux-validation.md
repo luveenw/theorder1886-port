@@ -1,6 +1,6 @@
 # PikaOS Linux validation
 
-Validated on 2026-10-16, starting from upstream commit
+Validated on 2026-10-16–17, starting from upstream commit
 `3cbef75de0f33e431e19a0dfe391e530057f739e`. The fork's implementation lives on
 `codex/pikaos-linux` at https://github.com/luveenw/theorder1886-port.
 
@@ -49,7 +49,7 @@ Validated on 2026-10-16, starting from upstream commit
 
 ## Checks
 
-- `python3 -m unittest discover -s tests`: 247 tests, pass; 42 skips in the
+- `python3 -m unittest discover -s tests`: 250 tests, pass; 42 skips in the
   sandbox (Windows-only, optional iced-x86 and display-dependent tests).
 - With desktop display access, 81 launcher/control/entry-point tests run with
   16 Windows-only skips. The passing tests include the real Tk resolution and
@@ -108,6 +108,48 @@ committed. Test saves/settings are isolated in `out/linux-smoke`; the source gam
 dump was not modified. Full gameplay, audio listening, save/load round trips,
 other GPU drivers and temporal-upscaler image quality remain unverified. Optional
 DLSS bridges and FSR 4 model assets are not included in the native archive.
+
+### Resolution and aspect baseline (October 17)
+
+The supplied executable already contains 720p and fullscreen aspect changes.
+A 2560x1440 output window therefore stretched a 1280x720 scene. The new
+signature-located community adapter changes both display dimensions and picture
+viewport to 1920x1080; with Original aspect, captured main scene attachments and
+raster areas are 1920x800 inside the letterboxed 1920x1080 display. Original now
+explicitly restores the 2.40:1 setup float instead of assuming an unmodified executable.
+The game files are patched only in the loaded image.
+
+`checkpoint-1080-original` ran for 120 seconds without a runtime fault and ended
+with its requested watchdog. The user confirmed it was sharper and more stable
+than the previous runs. This is the selected local baseline: Original aspect,
+native 1080p adapter, experimental temporal upscaling off; other readback,
+multisampling and shader-compilation preferences retained. The 2560x1440 output
+window preference is retained; it is not a claim of native 1440p rendering.
+
+The official ShadPS4 XML was downloaded from
+https://github.com/shadps4-emu/ps4_cheats/blob/main/PATCHES/TheOrder1886.xml
+into `user/patches/shadPS4`, and that folder is selected in the local launcher.
+Its 1440p option is marked nonworking upstream. An isolated native 1440p
+candidate also crashed and was not installed as a playable option. External
+ShadPS4 addresses now correctly remove the 0x400000 load bias. Other executable
+builds require unique signatures for every write; incompatible raw patches are
+reported and skipped.
+
+The TAA/FSR label previously reported the selected setting without proving that
+the title's reconstruction pass ran. The overlay now reports the applied
+provider, and camera jitter requires a successful preceding reconstruction.
+CPU regression checks cover absent resolves, missed frames, provider resets and
+normal Halton progression. Compiler modes that change shader memory reads now
+have separate shader and pipeline-key cache versions. Diagnostic windows have
+explicit titles and an opt-in exclusive scripted-input mode; normal launches
+retain physical controller input.
+
+Facial black spots and residual background flicker remain unresolved. They were
+observed with temporal upscaling disabled and persisted in isolated multisampling,
+depth-bias, dynamic-memory-read and fresh-readback comparisons. Those experiments
+were not promoted to the local baseline. Further comparisons were stopped at the
+user's request. Original saves remain unchanged; diagnostic copies and captures
+are kept under `out/lighting-investigation`.
 
 ## Use
 

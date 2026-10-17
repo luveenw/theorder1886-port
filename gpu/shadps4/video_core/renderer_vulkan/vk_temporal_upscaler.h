@@ -21,6 +21,7 @@
 
 #include "common/types.h"
 #include "video_core/renderer_vulkan/vk_common.h"
+#include "video_core/renderer_vulkan/motion_history.h"
 #include "video_core/renderer_vulkan/vk_dlss.h"
 #include "video_core/renderer_vulkan/vk_fsr4.h"
 #include "video_core/texture_cache/image.h"
@@ -203,7 +204,7 @@ private:
     bool opaque_valid = false;
     bool mask_ready = false;
     std::array<float, 2> jitter{};
-    u32 jitter_index = 0;
+    Motion::TemporalJitter jitter_sequence;
     bool reset = true;
     u64 frame_id = 0;
     std::chrono::steady_clock::time_point last_frame{};

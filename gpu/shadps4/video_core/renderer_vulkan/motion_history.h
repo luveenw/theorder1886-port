@@ -2,6 +2,7 @@
 #pragma once
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -202,6 +203,30 @@ private:
     std::vector<Slot> slots;
     size_t size = 0;
     uint32_t generation = 1;
+};
+
+// Subpixel offsets belong to a reconstruction sequence, never to an unresolved scene.
+class TemporalJitter {
+public:
+    void Reconstructed() { reconstructed = true; }
+    std::array<float, 2> Next(uint32_t phases, bool enabled, bool restart) {
+        const bool ready = std::exchange(reconstructed, false);
+        if (restart) index = 0;
+        if (!enabled || restart || !ready) return {};
+        index = index % std::max(1u, phases) + 1;
+        return {Halton(index, 2) - 0.5f, Halton(index, 3) - 0.5f};
+    }
+private:
+    static float Halton(uint32_t index, uint32_t base) {
+        float f = 1.0f, result = 0.0f;
+        for (uint32_t i = index; i > 0; i /= base) {
+            f /= float(base);
+            result += f * float(i % base);
+        }
+        return result;
+    }
+    uint32_t index = 0;
+    bool reconstructed = false;
 };
 
 inline uint32_t JitterPhases(uint32_t render_width, uint32_t output_width) {

@@ -24,6 +24,18 @@
         </PatchList>
     </Metadata>
     <Metadata Title="The Order 1886"
+              Name="Aspect Ratio - Original"
+              Note="Restores the original 2.40:1 picture, including executables with a pre-applied fullscreen aspect patch."
+              Author="theorder1886-port"
+              PatchVer="1.0"
+              AppVer="01.02"
+              AppElf="eboot.bin"
+              isEnabled="false">
+        <PatchList>
+            <Line Type="float32" Address="0x0044ce8c" Value="2.4" Pattern="c7 85 18 fc ff ff ?? ?? ?? ?? c7 85 d0 fb ff ff 00 00 00 00" At="6"/>
+        </PatchList>
+    </Metadata>
+    <Metadata Title="The Order 1886"
               Name="Aspect Ratio - 16:9"
               Note="Fills a 16:9 screen without black bars: the picture keeps the original horizontal view and shows more above and below."
               Author="theorder1886-port"

@@ -270,7 +270,7 @@ std::string OverlayText() {
     P::Sample sample = P::Latest();
     sample.fps = frame_ms_avg > 0.0f ? 1000.0f / frame_ms_avg : 0.0f;
     sample.frame_ms = frame_ms_avg;
-    sample.upscaler = UpscalerLabel(s.upscaler);
+    sample.upscaler = UpscalerLabel(s.active_upscaler);
     return P::Format(sample, items, s.overlay_layout == 0);
 }
 
