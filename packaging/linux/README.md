@@ -55,6 +55,12 @@ experimental-upscaler switch. Availability of FSR/DLSS variants depends on their
 assets, optional bridges and GPU support; the Linux package does not include the
 Windows DLSS bridge or optional FSR 4 model downloads.
 
+**Reset to Default**, beside Save at the bottom of every launcher page, restores
+graphics, performance, experimental options and controls. Press Save or Play to
+apply. It keeps your game/update/save/mod/patch locations, launcher language and
+content selections, and leaves saves and shader caches intact. Stop the game
+before resetting.
+
 From the checkout or the extracted native archive:
 
 ```bash

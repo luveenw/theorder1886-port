@@ -14,6 +14,7 @@ game without the window (`--play`), run.py (`--run`) and the preparation scripts
 so a packaged port needs no Python installation.
 """
 import contextlib
+import copy
 import glob
 import json
 import os
@@ -783,6 +784,7 @@ class Launcher:
         self.ini, self.ini_lines = load_ini()
         self.vars = {}
         self.process = self.job = None
+        self.reset_pending = False
         self.output = queue.Queue()
         self.banner_source = self.banner_image = None
         self.ui_calls = queue.Queue()  # work for the Tk thread from helper threads
@@ -1048,12 +1050,16 @@ class Launcher:
         bar = tk.Frame(right, bg=BG, height=self.px(72))
         bar.pack(fill='x', side='bottom')
         bar.pack_propagate(False)
-        self.status = tk.Label(bar, text='', bg=BG, fg=MUTED, font=(UI_FONT, 10), anchor='w', justify='left')
-        self.status.pack(side='left', padx=24)
+        self.status = tk.Label(bar, text='', bg=BG, fg=MUTED, font=(UI_FONT, 10), anchor='w', justify='left',
+                               wraplength=self.px(240))
         self.play_button = ttk.Button(bar, text=heading_text(_('PLAY', 'ИГРАТЬ')), style='Play.TButton', command=self.play)
         self.play_button.pack(side='right', padx=(self.px(10), self.px(24)), pady=self.px(11))
         self.save_button = ttk.Button(bar, text=_('Save', 'Сохранить'), command=self.save, state='disabled')
         self.save_button.pack(side='right', pady=self.px(11))
+        self.reset_button = ttk.Button(bar, text=_('Reset to Default', 'Сбросить настройки'),
+                                       command=self.reset_defaults)
+        self.reset_button.pack(side='right', padx=self.px(10), pady=self.px(11))
+        self.status.pack(side='left', padx=24)
         self.content = tk.Frame(right, bg=PANEL)
         self.content.pack(fill='both', expand=True)
 
@@ -1467,6 +1473,25 @@ class Launcher:
             self.control_vars['pad'][button].set(pad or '')
         self.relabel_pad_controls()
 
+    def reset_defaults(self):
+        """Stage factory preferences, keeping installed content, locations and saved games."""
+        if self.process is not None and self.process.poll() is None:
+            self.messagebox.showinfo(APP_NAME, _('Stop the game before resetting settings.'))
+            return
+        current = self.gather()['app']
+        keep = ('game_dir', 'update_dir', 'user_dir', 'mods_dir', 'patches_dir',
+                'ui_language', 'mods_enabled', 'game_patches')
+        self.app = {**copy.deepcopy(APP_DEFAULTS), **{key: current[key] for key in keep}}
+        self.ini = dict(INI_DEFAULTS)
+        for key, var in self.vars.items():
+            value = self.ini[key] if var.store == 'ini' else self.app[key]
+            var.set(value == '1' if var.store == 'ini' and key in INI_FLAGS else value)
+        self.pad_style.set(APP_DEFAULTS['pad_style'])
+        self.reset_controls()
+        self.reset_pending = True
+        self.refresh_save_button()
+        self.status.configure(text=_('Defaults restored. Save to apply; game and save locations are kept.'), fg=MUTED)
+
     def build_linux_options(self, f):
         """Wayland / X11, GameMode and MangoHud: only the ones this system has can be turned on."""
         tools = linux_tools()
@@ -1750,6 +1775,9 @@ class Launcher:
         edited = {key: state['ini'][key] for key, var in self.vars.items()
                   if var.store == 'ini' and
                   (key not in persisted or state['ini'][key] != baseline.get(key))}
+        if self.reset_pending:
+            # An explicit reset also removes obsolete/hidden runtime overrides.
+            edited, lines = state['ini'], []
         try:
             save_ini(edited, lines)
             atomic_write(CONFIG_FILE, json.dumps(state['app'], indent=2, ensure_ascii=False))
@@ -1768,6 +1796,7 @@ class Launcher:
                                                    'Не удалось сохранить все настройки. Проверьте права записи и свободное место, затем повторите.'))
             return False
         self.app = state['app']
+        self.reset_pending = False
         self.ini, self.ini_lines = load_ini()
         for key, var in self.vars.items():
             if var.store == 'ini':
@@ -1813,7 +1842,7 @@ class Launcher:
 
     def refresh_save_button(self):
         """Save is only active while the window differs from the files (gather() against the last save)."""
-        self.save_button.configure(state='normal' if self.gather() != self.saved else 'disabled')
+        self.save_button.configure(state='normal' if self.reset_pending or self.gather() != self.saved else 'disabled')
 
     def watch_changes(self):
         self.refresh_save_button()

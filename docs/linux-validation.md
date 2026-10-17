@@ -38,13 +38,22 @@ Validated on 2026-10-16, starting from upstream commit
    register. Normal compilation and shader caching remain available.
 8. Add direct and graphical Linux entry points, restore the launcher's visible
    experimental FSR 3.1/TAA/output-resolution controls, and package a native archive.
+9. Replace the shader compiler's fixed 32 MiB executable SRT-walker arena with
+   additional nonmoving chunks. Cache warm-up and new shader compilation share
+   this storage; cached helper code could fill it before the opening scene.
+   Generate each new walker privately before publishing it, and recognize all
+   chunks in the fault handler, including helpers loaded only from cache.
+10. Add Reset to Default beside Save on every launcher page. Reset is staged
+    until Save/Play, removes obsolete runtime overrides, restores controls and
+    retains game/save/content locations and selections. Saves/caches are untouched.
 
 ## Checks
 
-- `python3 -m unittest discover -s tests`: 243 tests, pass; 38 skips in the
+- `python3 -m unittest discover -s tests`: 247 tests, pass; 42 skips in the
   sandbox (Windows-only, optional iced-x86 and display-dependent tests).
-- With desktop display access, 32 launcher/control/entry-point tests pass,
-  including the real Tk resolution/upscaling controls.
+- With desktop display access, 81 launcher/control/entry-point tests run with
+  16 Windows-only skips. The passing tests include the real Tk resolution and
+  upscaling controls, reset/save/reopen, failed-save retry and save/cache retention.
 - The native runtime suite passes: pad input, threads/TLS/synchronization,
   direct memory, files, content services, MP3/H.264 decoding, services and ISA stubs.
 - Renderer checks pass: pipeline binary serialization, initialization/fallbacks,
@@ -52,6 +61,10 @@ Validated on 2026-10-16, starting from upstream commit
   with binary caching disabled, then exercises mocked failure/success cases.
 - Vulkan command submission and a 4096-byte GPU readback pass on the RTX 5070 Ti.
 - The Tk launcher opens all five pages and its Graphics page successfully.
+- The SRT regression registers 105 MiB through the real cached-walker API,
+  including concurrent registration and a single 33 MiB blob, and executes every
+  retained function pointer after growth. The initial 40 MiB reproduction failed
+  before the fix with the exact `code is too big` exception.
 
 ## Game validation and limits
 
@@ -72,6 +85,23 @@ created a 102,400-byte `SYSTEM.DAT` in the isolated save folder. No host/guest
 fault occurred; the requested watchdog again ended the run with status 142.
 This verifies startup and initial scene rendering, not the full campaign or a
 save/load round trip.
+
+### Warm-cache startup crash
+
+The reported exit 23 after the SCE/SMS logos was reproduced using copies of the
+user's settings and populated shader cache (about 488 MB), without clearing it.
+GDB caught Xbyak's exception during a new SRT walker emission and showed
+`g_srt_codegen.size_ == maxSize_ == 33554432`. The disk shader cache itself has
+no 32 MiB limit; this was executable CPU helper storage shared by cached and new
+shaders. Local history already contains the allocation in its imported baseline
+and does not document why that size was chosen. Missing `.meta` messages preceded
+the failure but were cache misses, not the fatal assertion.
+
+With expandable storage, the same settings and cache ran for 90 seconds, reaching
+flip 5,160 instead of failing at flip 480. The requested watchdog ended the run
+with status 142; no `code is too big` or GPU assertion occurred. No cache purge or
+user preference changes were needed. This is a startup regression check, not
+full-game validation.
 
 Run logs and decoded frame captures are under `out/` and are intentionally not
 committed. Test saves/settings are isolated in `out/linux-smoke`; the source game

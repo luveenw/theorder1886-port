@@ -269,6 +269,19 @@ if (WIN32)
 endif()
 
 # Explicit test targets; neither launches the game nor needs a Vulkan device.
+add_executable(srt-code-arena-test EXCLUDE_FROM_ALL ../tests/test_srt_code_arena.cpp
+    ../tests/test_gpu_runtime_stubs.cpp)
+target_compile_definitions(srt-code-arena-test PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+target_include_directories(srt-code-arena-test PRIVATE shim shadps4 third_party/gcn/include)
+target_link_libraries(srt-code-arena-test PRIVATE theordergpu)
+target_compile_options(srt-code-arena-test PRIVATE -fPIC)
+if (WIN32)
+    target_sources(srt-code-arena-test PRIVATE ../src/compat_win.c)
+    target_compile_definitions(srt-code-arena-test PRIVATE sigjmp_buf=port_jmp_buf)
+    target_compile_options(srt-code-arena-test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/../src/compat_win.h)
+    target_link_libraries(srt-code-arena-test PRIVATE onecore)
+endif()
 add_executable(pipeline-binary-cache-test EXCLUDE_FROM_ALL ../tests/test_pipeline_binary_cache.cpp
     ../tests/test_gpu_runtime_stubs.cpp)
 target_compile_definitions(pipeline-binary-cache-test PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)

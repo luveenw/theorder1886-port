@@ -74,6 +74,7 @@ class StreamMemoryLauncherTest(unittest.TestCase):
             app.control_vars, app.mod_order, app.mod_vars, app.patch_vars = {}, [], {}, {}
             app.game_patch_title, app.game_patch_vars = None, {}
             app.save_button = mock.Mock()  # collect() refreshes it
+            app.reset_pending = False
             app.pad_style = tk.StringVar(root, value='playstation')
             app.store_game_patches = mock.Mock()
             app.build_performance()
